@@ -64,7 +64,7 @@ class ChemicalMetaRegressor:
             left_index=True,
             right_index=True,
         )
-        finalize_chemprop_model(self.training_data, self.smiles_col)
+        finalize_chemprop_model(self.training_data)
 
     def _train_model_selector(self):
         """Train a model selector to choose the best model for each prediction."""
