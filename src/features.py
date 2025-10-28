@@ -2,7 +2,6 @@
 
 import logging
 
-import numpy as np
 import pandas as pd
 from rdkit import Chem, DataStructs
 from rdkit.Chem import Descriptors, Mol, rdFingerprintGenerator

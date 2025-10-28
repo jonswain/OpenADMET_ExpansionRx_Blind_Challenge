@@ -22,6 +22,7 @@ class ChemicalMetaRegressor:
         smiles_col (str): The name of the column containing SMILES strings.
         target_cols (list[str]): A list of target column names.
         training_data (pd.DataFrame): The training data containing SMILES and target values.
+        clusters (pd.Series): The Butina clusters for the training data.
         training_features (pd.DataFrame): The generated features for the training data.
         classical_models (dict): A dictionary of trained classical models.
         cross_val_preds (pd.DataFrame): A DataFrame containing cross-validation predictions.
@@ -67,7 +68,7 @@ class ChemicalMetaRegressor:
         """Train a Chemprop model on the training data."""
         log.info("Training Chemprop models")
         chemprop_cross_val_preds = train_cv_chemprop_models(
-            self.training_data, self.smiles_col
+            self.training_data, self.clusters, self.smiles_col
         )
         chemprop_cross_val_preds.columns = [
             f"{col}_Chemprop" for col in chemprop_cross_val_preds.columns

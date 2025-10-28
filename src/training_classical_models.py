@@ -10,7 +10,7 @@ from optuna.exceptions import TrialPruned
 from optuna.pruners import MedianPruner
 from sklearn.base import BaseEstimator, clone
 from sklearn.metrics import mean_absolute_error
-from sklearn.model_selection import GroupKFold, KFold, cross_val_predict
+from sklearn.model_selection import GroupKFold, cross_val_predict
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
@@ -147,6 +147,7 @@ def objective_wrapper(
 
     Raises:
         ValueError: If the model is not found in the hyperparameter search space.
+        TrialPruned: If the trial is pruned due to early low performance.
 
     Returns:
         float: The mean absolute error for the model with the given hyperparameters.

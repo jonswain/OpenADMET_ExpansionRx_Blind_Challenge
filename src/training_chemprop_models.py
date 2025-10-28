@@ -4,19 +4,20 @@ import subprocess
 from pathlib import Path
 
 import pandas as pd
-from sklearn.model_selection import GroupKFold, KFold
+from sklearn.model_selection import GroupKFold
 from tqdm import tqdm
 
 from .config import CROSS_VALIDATION_FOLDS
 
 
 def train_cv_chemprop_models(
-    data: pd.DataFrame, smiles_col: str = "SMILES"
+    data: pd.DataFrame, groups: pd.Series, smiles_col: str = "SMILES"
 ) -> pd.DataFrame:
     """Train a Chemprop multitask models using cross-validation.
 
     Args:
         data (pd.DataFrame): A DataFrame containing the training data.
+        groups (pd.Series): The groups to use for cross-validation.
         smiles_col (str): The name of the column containing SMILES strings.
 
     Returns:
@@ -24,8 +25,8 @@ def train_cv_chemprop_models(
     """
     Path("chemprop_data").mkdir(exist_ok=True)
     Path("chemprop_models").mkdir(exist_ok=True)
-    cv = KFold(n_splits=CROSS_VALIDATION_FOLDS, shuffle=True, random_state=42)
-    for fold, (train_idx, val_idx) in enumerate(cv.split(data)):
+    cv = GroupKFold(n_splits=CROSS_VALIDATION_FOLDS)
+    for fold, (train_idx, val_idx) in enumerate(cv.split(data, groups=groups)):
         data.drop("Molecule Name", axis=1).iloc[train_idx].to_csv(
             f"chemprop_data/train_fold_{fold}.csv", index=False
         )
