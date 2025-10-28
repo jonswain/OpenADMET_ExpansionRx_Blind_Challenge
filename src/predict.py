@@ -39,7 +39,15 @@ def predict_on_smiles(
                 prediction_df.loc[selected_smiles, target] = preds
     if use_chemprop:
         chemprop_preds = _make_chemprop_predictions(smiles, smiles_col="SMILES")
-        # TODO: Work out how to add chemprop predictions to missing values
+    # Where prediction_df is na, fill in from chemprop_preds
+        for target in selection_models.keys():
+            missing_smiles = prediction_df.index[prediction_df[target].isna()]
+            if not missing_smiles.empty:
+                preds = chemprop_preds.loc[missing_smiles, target]
+                prediction_df.loc[missing_smiles, target] = preds
+        print(chemprop_preds)
+    
+    
     return prediction_df[
         [col for col in prediction_df.columns if not col.endswith("_model")]
     ]
