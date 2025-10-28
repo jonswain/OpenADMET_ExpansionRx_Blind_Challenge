@@ -5,24 +5,12 @@ from time import time
 
 import pandas as pd
 from sklearn.base import BaseEstimator
-from sklearn.ensemble import (
-    ExtraTreesRegressor,
-    GradientBoostingRegressor,
-    HistGradientBoostingRegressor,
-    RandomForestRegressor,
-    StackingRegressor,
-)
-from sklearn.linear_model import (
-    ElasticNet,
-    Lasso,
-    LinearRegression,
-    Ridge,
-)
 from sklearn.metrics import mean_absolute_error
 from sklearn.model_selection import GroupKFold, KFold, cross_val_predict
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
-from xgboost import XGBRegressor
+
+from .config import CROSS_VALIDATION_FOLDS, SKLEARN_MODELS
 
 log = logging.getLogger(__name__)
 
@@ -88,29 +76,11 @@ def _regression_selection_by_cv(
         list[BaseEstimator]: The trained models with cross-validation scores.
     """
     scores = []
-    for reg in [
-        LinearRegression(n_jobs=-1),
-        Lasso(),
-        Ridge(),
-        ElasticNet(),
-        ExtraTreesRegressor(n_jobs=-1, random_state=42),
-        GradientBoostingRegressor(random_state=42),
-        HistGradientBoostingRegressor(random_state=42),
-        RandomForestRegressor(n_jobs=-1, random_state=42),
-        XGBRegressor(n_jobs=-1, random_state=42),
-        StackingRegressor(
-            estimators=[
-                ("et", ExtraTreesRegressor(n_jobs=-1, random_state=42)),
-                ("lr", Ridge(alpha=1.0)),
-            ],
-            final_estimator=Ridge(alpha=1.0),
-            n_jobs=-1,
-        ),
-    ]:
+    for reg in SKLEARN_MODELS:
         if groups is not None:
-            cv = GroupKFold(n_splits=5)
+            cv = GroupKFold(n_splits=CROSS_VALIDATION_FOLDS)
         else:
-            cv = KFold(n_splits=5, random_state=42, shuffle=True)
+            cv = KFold(n_splits=CROSS_VALIDATION_FOLDS, random_state=42, shuffle=True)
         start = time()
         scaler = StandardScaler()
         pipe = Pipeline(steps=[("scaler", scaler), ("regressor", reg)])
