@@ -8,6 +8,7 @@ import pandas as pd
 from .features import generate_features
 from .model_selection import train_model_selector
 from .predict import predict_on_smiles
+from .training_chemprop_models import finalize_chemprop_model, train_cv_chemprop_models
 from .training_classical_models import train_classical_models
 
 log = logging.getLogger(__name__)
@@ -51,10 +52,23 @@ class ChemicalMetaRegressor:
 
     def _train_chemprop_model(self):
         """Train a Chemprop model on the training data."""
-        pass  # Implementation of Chemprop training goes here
+        log.info("Training Chemprop models")
+        chemprop_cross_val_preds = train_cv_chemprop_models(
+            self.training_data, self.smiles_col
+        )
+        chemprop_cross_val_preds.columns = [
+            f"{col}_Chemprop" for col in chemprop_cross_val_preds.columns
+        ]
+        self.cross_val_preds = self.cross_val_preds.merge(
+            chemprop_cross_val_preds,
+            left_index=True,
+            right_index=True,
+        )
+        finalize_chemprop_model(self.training_data, self.smiles_col)
 
     def _train_model_selector(self):
         """Train a model selector to choose the best model for each prediction."""
+        log.info("Training model selectors")
         self.model_selectors = train_model_selector(
             self.target_cols,
             self.cross_val_preds,
