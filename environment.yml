@@ -1,0 +1,22 @@
+name: OpenADMET_challenge
+dependencies:
+  - chemprop=2.2.1
+  - ipykernel
+  - ipywidgets
+  - pandas=2.3.0
+  - python=3.12
+  - rdkit=2025.03.4
+  - requests=2.32.5
+  - scikit-learn=1.7.0
+  - tqdm=4.67.1
+  - xgboost==3.0.1
+  - pip
+  - pip:
+    - datasets==4.3.0
+    # Development and testing dependencies
+    - black
+    - pydoclint
+    - mypy
+    - ruff
+    - pytest
+    - pytest-cov
