@@ -2,7 +2,8 @@
 
 Grouping.clustering for CV
 Hyperparameter tuning using CV
-Chemprop model
+Chemprop model - add to prediction
+Logging
 Docstrings
 Typehints
 Ruff
