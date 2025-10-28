@@ -27,6 +27,7 @@ def train_classical_models(
     target_cols: list[str],
     clusters: pd.Series,
     n_keep: int = 1,
+    tune_hyperparameters: bool = True,
 ) -> dict[str, dict[str, Pipeline]]:
     """Train classifcal ML models for each target.
 
@@ -37,6 +38,8 @@ def train_classical_models(
         target_cols (list[str]): The column names for the targets.
         clusters (pd.Series): The groups to use for cross-validation.
         n_keep (int, optional): Number of best models to keep. Defaults to 1.
+        tune_hyperparameters (bool, optional): Whether to tune hyperparameters. Defaults
+                                               to True.
 
     Returns:
         dict[str, dict[str, Pipeline]]: A dictionary containing the trained models.
@@ -49,7 +52,13 @@ def train_classical_models(
         X = features.loc[selected_data[smiles_col]]
         y = selected_data[target].values
         groups = clusters.loc[selected_data[smiles_col]]
-        best_models = _train_classical_model(X, y, groups=groups, n_keep=n_keep)
+        best_models = _train_classical_model(
+            X,
+            y,
+            groups=groups,
+            n_keep=n_keep,
+            tune_hyperparameters=tune_hyperparameters,
+        )
         trained_models[target] = {}
         for model in best_models:
             trained_models[target][model["regressor"].__class__.__name__] = model
@@ -57,7 +66,11 @@ def train_classical_models(
 
 
 def _train_classical_model(
-    X: pd.DataFrame, y: pd.Series, groups: pd.Series, n_keep: int = 1
+    X: pd.DataFrame,
+    y: pd.Series,
+    groups: pd.Series,
+    n_keep: int = 1,
+    tune_hyperparameters: bool = True,
 ) -> list[Pipeline]:
     """Train the best classical regression model on the provided data.
 
@@ -66,6 +79,8 @@ def _train_classical_model(
         y (pd.Series): The labels to use for training.
         groups (pd.Series): The groups to use for cross-validation.
         n_keep (int, optional): Number of best models to keep. Defaults to 1.
+        tune_hyperparameters (bool, optional): Whether to tune hyperparameters. Defaults
+                                               to True.
 
     Returns:
         list[Pipeline]: The trained models.
@@ -73,7 +88,9 @@ def _train_classical_model(
     models = _regression_selection_by_cv(X, y, groups)
     best_models = sorted(models, key=lambda model: model.performance)[:n_keep]
     for model in best_models:
-        if model["regressor"].__class__.__name__ not in HYPERPARAMETER_SEARCH_SPACE:
+        if (
+            model["regressor"].__class__.__name__ not in HYPERPARAMETER_SEARCH_SPACE
+        ) or not tune_hyperparameters:
             best_params = {}
         else:
             log.info(

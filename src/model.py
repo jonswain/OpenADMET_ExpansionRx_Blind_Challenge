@@ -48,7 +48,9 @@ class ChemicalMetaRegressor:
             self.cross_val_preds[f"{target}_true"] = self.training_data[target]
         self.cross_val_preds.set_index(self.smiles_col, inplace=True)
 
-    def _train_classical_models(self, n_keep: int = 1):
+    def _train_classical_models(
+        self, n_keep: int = 1, tune_hyperparameters: bool = True
+    ):
         log.info("Training classical models")
         self.classical_models = train_classical_models(
             self.training_features,
@@ -57,6 +59,7 @@ class ChemicalMetaRegressor:
             self.target_cols,
             self.clusters,
             n_keep=n_keep,
+            tune_hyperparameters=tune_hyperparameters,
         )
         for target, models in self.classical_models.items():
             for model_name, model in models.items():
@@ -89,9 +92,13 @@ class ChemicalMetaRegressor:
             self.training_features,
         )
 
-    def train_models(self, n_keep_classical: int = 1):
+    def train_models(
+        self, n_keep_classical: int = 1, tune_hyperparameters: bool = True
+    ):
         """Train all models (classical and Chemprop) on the training data."""
-        self._train_classical_models(n_keep=n_keep_classical)
+        self._train_classical_models(
+            n_keep=n_keep_classical, tune_hyperparameters=tune_hyperparameters
+        )
         self._train_chemprop_model()
         self._train_model_selector()
 
