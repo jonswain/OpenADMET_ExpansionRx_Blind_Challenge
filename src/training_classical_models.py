@@ -14,7 +14,6 @@ from sklearn.ensemble import (
 )
 from sklearn.linear_model import (
     ElasticNet,
-    HuberRegressor,
     Lasso,
     LinearRegression,
     Ridge,
@@ -23,6 +22,7 @@ from sklearn.metrics import mean_absolute_error
 from sklearn.model_selection import GroupKFold, KFold, cross_val_predict
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
+from xgboost import XGBRegressor
 
 log = logging.getLogger(__name__)
 
@@ -97,6 +97,7 @@ def _regression_selection_by_cv(
         GradientBoostingRegressor(random_state=42),
         HistGradientBoostingRegressor(random_state=42),
         RandomForestRegressor(n_jobs=-1, random_state=42),
+        XGBRegressor(n_jobs=-1, random_state=42),
         StackingRegressor(
             estimators=[
                 ("et", ExtraTreesRegressor(n_jobs=-1, random_state=42)),
