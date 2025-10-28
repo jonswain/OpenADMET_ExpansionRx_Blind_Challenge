@@ -4,7 +4,7 @@ import logging
 
 import pandas as pd
 from rdkit import Chem
-from rdkit.Chem import Descriptors, rdFingerprintGenerator
+from rdkit.Chem import Descriptors, Mol, rdFingerprintGenerator
 from tqdm import tqdm
 
 log = logging.getLogger(__name__)
@@ -13,15 +13,15 @@ log = logging.getLogger(__name__)
 def generate_features(
     smiles_list: list | pd.Series, radius: int = 2, fpSize: int = 2048
 ) -> pd.DataFrame:
-    """_summary_
+    """Generate molecular features from a list of SMILES strings.
 
     Args:
-        smiles_list (list | pd.Series): _description_
-        radius (int, optional): _description_. Defaults to 2.
-        fpSize (int, optional): _description_. Defaults to 2048.
+        smiles_list (list | pd.Series): A list or pandas Series of SMILES strings.
+        radius (int, optional): The radius for the Morgan fingerprint. Defaults to 2.
+        fpSize (int, optional): The length to fold the fingerprint to. Defaults to 2048.
 
     Returns:
-        pd.DataFrame: _description_
+        pd.DataFrame: A DataFrame containing the generated features.
     """
     mfpgen = rdFingerprintGenerator.GetMorganGenerator(radius=radius, fpSize=fpSize)
     mols = [
@@ -42,15 +42,16 @@ def generate_features(
     return combined_df
 
 
-def _generate_rdkit_descriptors(mol, missingVal=None) -> dict:
-    """_summary_
+def _generate_rdkit_descriptors(mol: Mol, missingVal: None | float = None) -> dict:
+    """Generate all RDKit 2D descriptors for a given molecule.
 
     Args:
-        mol (_type_): _description_
-        missingVal (_type_, optional): _description_. Defaults to None.
+        mol (Mol): The RDKit molecule object.
+        missingVal (None | float, optional): The value to use for missing descriptors.
+                                             Defaults to None.
 
     Returns:
-        _type_: _description_
+        dict: A dictionary of descriptor names and their values.
     """
     res = {}
     for nm, fn in Descriptors._descList:

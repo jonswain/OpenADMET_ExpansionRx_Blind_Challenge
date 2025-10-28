@@ -22,6 +22,18 @@ def train_classical_models(
     target_cols: list[str],
     n_keep: int = 1,
 ) -> dict[str, dict[str, BaseEstimator]]:
+    """Train classifcal ML models for each target.
+
+    Args:
+        features (pd.DataFrame): The feature data to use for training.
+        data (pd.DataFrame): The target data and SMILES identifiers to use for training.
+        smiles_col (str): The column name for the SMILES identifiers.
+        target_cols (list[str]): The column names for the targets
+        n_keep (int, optional): Number of best models to keep. Defaults to 1.
+
+    Returns:
+        dict[str, dict[str, BaseEstimator]]: A dictionary containing the trained models.
+    """
     trained_models: dict[str, dict[str, BaseEstimator]] = {}
     for target in target_cols:
         log.info("Training classical models for target: %s", target)
@@ -29,7 +41,7 @@ def train_classical_models(
         log.info("Number of training samples %d", len(selected_data))
         X = features.loc[selected_data[smiles_col]]
         y = selected_data[target].values
-        # TODO: Add support for grouping
+        # TODO: Add support for grouping/clustering
         best_models = _train_classical_model(X, y, groups=None, n_keep=n_keep)
         trained_models[target] = {}
         for model in best_models:
@@ -45,7 +57,8 @@ def _train_classical_model(
     Args:
         X (pd.DataFrame): The features to use for training.
         y (pd.Series): The labels to use for training.
-        groups (pd.Series | None): The groups to use for cross-validation.
+        groups (pd.Series | None): The groups to use for cross-validation. Defaults to None.
+        n_keep (int, optional): Number of best models to keep. Defaults to 1.
 
     Returns:
         BaseEstimator: The trained model.

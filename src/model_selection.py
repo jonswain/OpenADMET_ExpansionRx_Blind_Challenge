@@ -13,6 +13,18 @@ def train_model_selector(
     cross_validation_predictions: pd.DataFrame,
     features: pd.DataFrame,
 ) -> dict[str, RandomForestClassifier]:
+    """Train a classifier to select the best performing model for each target.
+
+    Args:
+        targets (list[str]): A list of target names.
+        cross_validation_predictions (pd.DataFrame): A DataFrame containing
+                                                     cross-validation predictions.
+        features (pd.DataFrame): A DataFrame containing feature data.
+
+    Returns:
+        dict[str, RandomForestClassifier]: A dictionary mapping target names to their
+        trained RandomForestClassifier models.
+    """
     cross_validation_predictions = _determine_best_model(
         targets, cross_validation_predictions
     )
@@ -35,6 +47,17 @@ def train_model_selector(
 def _determine_best_model(
     targets: list[str], cross_validation_predictions: pd.DataFrame
 ) -> pd.DataFrame:
+    """Determine the best performing model for each prediction for each target.
+
+    Args:
+        targets (list[str]): A list of target names.
+        cross_validation_predictions (pd.DataFrame): A DataFrame containing
+                                                     cross-validation predictions.
+
+    Returns:
+        pd.DataFrame: A DataFrame containing the best performing model for each
+                      prediction for each target.
+    """
     for target in targets:
         true_values = cross_validation_predictions[f"{target}_true"].dropna()
         model_cols = [
@@ -49,9 +72,9 @@ def _determine_best_model(
         performance_cols = cross_validation_predictions[
             [f"{col}_abs_error" for col in model_cols]
         ]
-        # TODO: Silence error
+        performance_cols = performance_cols.fillna(float("inf"))
         cross_validation_predictions[f"{target}_best_model"] = performance_cols.idxmin(
-            axis=1, skipna=True
+            axis=1
         ).str.replace("_abs_error", "")
         cross_validation_predictions[f"{target}_best_model"] = (
             cross_validation_predictions[f"{target}_best_model"].str.replace(

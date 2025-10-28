@@ -13,7 +13,15 @@ from .config import CROSS_VALIDATION_FOLDS
 def train_cv_chemprop_models(
     data: pd.DataFrame, smiles_col: str = "SMILES"
 ) -> pd.DataFrame:
-    """Train a Chemprop multitask model on the data."""
+    """Train a Chemprop multitask models using cross-validation.
+
+    Args:
+        data (pd.DataFrame): A DataFrame containing the training data.
+        smiles_col (str): The name of the column containing SMILES strings.
+
+    Returns:
+        pd.DataFrame: A DataFrame containing cross-validation predictions.
+    """
     Path("chemprop_data").mkdir(exist_ok=True)
     Path("chemprop_models").mkdir(exist_ok=True)
     cv = KFold(n_splits=CROSS_VALIDATION_FOLDS, shuffle=True, random_state=42)
@@ -69,21 +77,25 @@ def train_cv_chemprop_models(
     return cross_val_preds
 
 
-def finalize_chemprop_model(data: pd.DataFrame) -> pd.DataFrame:
-    """Train a Chemprop multitask model on the data."""
+def finalize_chemprop_model(data: pd.DataFrame) -> None:
+    """Train a finalized Chemprop multitask model on all the training data.
+
+    Args:
+        data (pd.DataFrame): A DataFrame containing the training data.
+    """
     Path("chemprop_data").mkdir(exist_ok=True)
     Path("chemprop_models").mkdir(exist_ok=True)
-    data.drop("Molecule Name", axis=1).to_csv(f"chemprop_data/train.csv", index=False)
+    data.drop("Molecule Name", axis=1).to_csv("chemprop_data/train.csv", index=False)
     subprocess.run(
         [
             "chemprop",
             "train",
             "--data-path",
-            f"chemprop_data/train.csv",
+            "chemprop_data/train.csv",
             "--task-type",
             "regression",
             "--output-dir",
-            f"chemprop_models/finalized_model",
+            "chemprop_models/finalized_model",
             "--split-type",
             "scaffold_balanced",
         ],

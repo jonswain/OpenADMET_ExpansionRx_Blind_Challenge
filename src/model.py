@@ -16,7 +16,17 @@ log = logging.getLogger(__name__)
 
 @dataclass
 class ChemicalMetaRegressor:
-    """Meta-regressor for predicting chemical properties."""
+    """Meta-regressor for predicting chemical properties.
+
+    Attributes:
+        smiles_col (str): The name of the column containing SMILES strings.
+        target_cols (list[str]): A list of target column names.
+        training_data (pd.DataFrame): The training data containing SMILES and target values.
+        training_features (pd.DataFrame): The generated features for the training data.
+        classical_models (dict): A dictionary of trained classical models.
+        cross_val_preds (pd.DataFrame): A DataFrame containing cross-validation predictions.
+        model_selectors (dict): A dictionary of trained model selectors.
+    """
 
     smiles_col: str = "SMILES"
     target_cols: list[str] = field(default_factory=list)
@@ -83,6 +93,7 @@ class ChemicalMetaRegressor:
 
     def predict(self, smiles: list[str] | pd.Series) -> pd.DataFrame:
         """Make predictions on new SMILES strings."""
+        log.info("Making predictions on new %s SMILES strings", len(smiles))
         return predict_on_smiles(
             smiles,
             self.model_selectors,
