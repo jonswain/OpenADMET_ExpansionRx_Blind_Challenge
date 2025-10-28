@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 
 import pandas as pd
 
-from .features import generate_features
+from .features import calculate_butina_clusters, generate_features
 from .model_selection import train_model_selector
 from .predict import predict_on_smiles
 from .training_chemprop_models import finalize_chemprop_model, train_cv_chemprop_models
@@ -31,6 +31,7 @@ class ChemicalMetaRegressor:
     smiles_col: str = "SMILES"
     target_cols: list[str] = field(default_factory=list)
     training_data: pd.DataFrame = field(default_factory=pd.DataFrame)
+    clusters: pd.Series = field(default_factory=pd.Series)
     training_features: pd.DataFrame = field(init=False)
     classical_models: dict = field(default_factory=dict)
     cross_val_preds: pd.DataFrame = field(default_factory=pd.DataFrame)
@@ -39,6 +40,7 @@ class ChemicalMetaRegressor:
     def __post_init__(self):
         log.info("Generating features for training data")
         self.training_features = generate_features(self.training_data[self.smiles_col])
+        self.clusters = calculate_butina_clusters(self.training_features)
         self.cross_val_preds = pd.DataFrame()
         self.cross_val_preds[self.smiles_col] = self.training_data[self.smiles_col]
         for target in self.target_cols:
@@ -52,6 +54,7 @@ class ChemicalMetaRegressor:
             self.training_data,
             self.smiles_col,
             self.target_cols,
+            self.clusters,
             n_keep=n_keep,
         )
         for target, models in self.classical_models.items():
