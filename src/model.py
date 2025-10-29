@@ -26,6 +26,7 @@ class ChemicalMetaRegressor:
         training_features (pd.DataFrame): The generated features for the training data.
         classical_models (dict): A dictionary of trained classical models.
         cross_val_preds (pd.DataFrame): A DataFrame containing cross-validation predictions.
+        chemprop_preds (pd.DataFrame): A DataFrame containing Chemprop predictions.
         model_selectors (dict): A dictionary of trained model selectors.
     """
 
@@ -36,6 +37,7 @@ class ChemicalMetaRegressor:
     training_features: pd.DataFrame = field(init=False)
     classical_models: dict = field(default_factory=dict)
     cross_val_preds: pd.DataFrame = field(default_factory=pd.DataFrame)
+    chemprop_preds: pd.DataFrame = field(default_factory=pd.DataFrame)
     model_selectors: dict = field(default_factory=dict)
 
     def __post_init__(self):
@@ -70,14 +72,14 @@ class ChemicalMetaRegressor:
     def _train_chemprop_model(self):
         """Train a Chemprop model on the training data."""
         log.info("Training Chemprop models")
-        chemprop_cross_val_preds = train_cv_chemprop_models(
+        self.chemprop_preds = train_cv_chemprop_models(
             self.training_data, self.clusters, self.smiles_col
         )
-        chemprop_cross_val_preds.columns = [
-            f"{col}_Chemprop" for col in chemprop_cross_val_preds.columns
+        self.chemprop_preds.columns = [
+            f"{col}_Chemprop" for col in self.chemprop_preds.columns
         ]
         self.cross_val_preds = self.cross_val_preds.merge(
-            chemprop_cross_val_preds,
+            self.chemprop_preds,
             left_index=True,
             right_index=True,
         )
