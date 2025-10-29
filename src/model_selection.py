@@ -66,16 +66,21 @@ def _determine_best_model(
             if col.startswith(f"{target}_") and col != f"{target}_true"
         ]
         for model_col in model_cols:
-            cross_validation_predictions[f"{model_col}_abs_error"] = abs(
-                cross_validation_predictions[model_col] - true_values
+            cross_validation_predictions.loc[
+                true_values.index, f"{model_col}_abs_error"
+            ] = abs(
+                cross_validation_predictions.loc[true_values.index, model_col]
+                - true_values
             )
         performance_cols = cross_validation_predictions[
             [f"{col}_abs_error" for col in model_cols]
         ]
         performance_cols = performance_cols.fillna(float("inf"))
-        cross_validation_predictions[f"{target}_best_model"] = performance_cols.idxmin(
-            axis=1
-        ).str.replace("_abs_error", "")
+        cross_validation_predictions.loc[true_values.index, f"{target}_best_model"] = (
+            performance_cols.loc[true_values.index]
+            .idxmin(axis=1)
+            .str.replace("_abs_error", "")
+        )
         cross_validation_predictions[f"{target}_best_model"] = (
             cross_validation_predictions[f"{target}_best_model"].str.replace(
                 f"{target}_", ""

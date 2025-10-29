@@ -26,7 +26,6 @@ class ChemicalMetaRegressor:
         training_features (pd.DataFrame): The generated features for the training data.
         classical_models (dict): A dictionary of trained classical models.
         cross_val_preds (pd.DataFrame): A DataFrame containing cross-validation predictions.
-        chemprop_preds (pd.DataFrame): A DataFrame containing Chemprop predictions.
         model_selectors (dict): A dictionary of trained model selectors.
     """
 
@@ -37,7 +36,6 @@ class ChemicalMetaRegressor:
     training_features: pd.DataFrame = field(init=False)
     classical_models: dict = field(default_factory=dict)
     cross_val_preds: pd.DataFrame = field(default_factory=pd.DataFrame)
-    chemprop_preds: pd.DataFrame = field(default_factory=pd.DataFrame)
     model_selectors: dict = field(default_factory=dict)
 
     def __post_init__(self):
@@ -72,17 +70,16 @@ class ChemicalMetaRegressor:
     def _train_chemprop_model(self):
         """Train a Chemprop model on the training data."""
         log.info("Training Chemprop models")
-        self.chemprop_preds = train_cv_chemprop_models(
+        chemprop_preds = train_cv_chemprop_models(
             self.training_data, self.clusters, self.smiles_col
         )
-        self.chemprop_preds.columns = [
-            f"{col}_Chemprop" for col in self.chemprop_preds.columns
-        ]
+        chemprop_preds.columns = [f"{col}_Chemprop" for col in chemprop_preds.columns]
         self.cross_val_preds = self.cross_val_preds.merge(
-            self.chemprop_preds,
+            chemprop_preds,
             left_index=True,
             right_index=True,
         )
+        log.info("Finalizing Chemprop model")
         finalize_chemprop_model(self.training_data)
 
     def _train_model_selector(self):
@@ -101,14 +98,17 @@ class ChemicalMetaRegressor:
         self._train_classical_models(
             n_keep=n_keep_classical, tune_hyperparameters=tune_hyperparameters
         )
-        self._train_chemprop_model()
+        # self._train_chemprop_model()
         self._train_model_selector()
 
-    def predict(self, smiles: list[str] | pd.Series) -> pd.DataFrame:
+    def predict(
+        self, smiles: list[str] | pd.Series, return_model_choices: bool = False
+    ) -> pd.DataFrame:
         """Make predictions on new SMILES strings."""
         log.info("Making predictions on new %s SMILES strings", len(smiles))
         return predict_on_smiles(
             smiles,
             self.model_selectors,
             self.classical_models,
+            return_model_choices=return_model_choices,
         )

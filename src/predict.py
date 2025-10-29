@@ -17,6 +17,7 @@ def predict_on_smiles(
     smiles: list[str] | pd.Series,
     selection_models: dict[str, RandomForestClassifier],
     classical_models: dict[str, dict[str, BaseEstimator]],
+    return_model_choices: bool = False,
 ) -> pd.DataFrame:
     """Make predictions for each SMILES in the test set using the best model.
 
@@ -26,6 +27,8 @@ def predict_on_smiles(
             select the best performing model for each target.
         classical_models (dict[str, dict[str, BaseEstimator]]): A dictionary mapping
             target names to their trained classical models.
+        return_model_choices (bool): Whether to return the model choices alongside
+            the predictions. Defaults to False.
 
     Returns:
         pd.DataFrame: A DataFrame containing the predictions for each target.
@@ -59,6 +62,8 @@ def predict_on_smiles(
                     selected_features = test_features.loc[selected_smiles]
                     preds = model.predict(selected_features)
                     prediction_df.loc[selected_smiles, target] = preds
+    if return_model_choices:
+        return prediction_df
     return prediction_df[
         [col for col in prediction_df.columns if not col.endswith("_model")]
     ]
