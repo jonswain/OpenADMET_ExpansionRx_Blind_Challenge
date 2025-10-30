@@ -23,7 +23,6 @@ logging.getLogger("optuna").setLevel(logging.WARNING)
 def train_classical_models(
     features: pd.DataFrame,
     data: pd.DataFrame,
-    smiles_col: str,
     target_cols: list[str],
     clusters: pd.Series,
     n_keep: int = 1,
@@ -33,8 +32,7 @@ def train_classical_models(
 
     Args:
         features (pd.DataFrame): The feature data to use for training.
-        data (pd.DataFrame): The target data and SMILES identifiers to use for training.
-        smiles_col (str): The column name for the SMILES identifiers.
+        data (pd.DataFrame): The target data to use for training.
         target_cols (list[str]): The column names for the targets.
         clusters (pd.Series): The groups to use for cross-validation.
         n_keep (int, optional): Number of best models to keep. Defaults to 1.
@@ -47,11 +45,11 @@ def train_classical_models(
     trained_models: dict[str, dict[str, Pipeline]] = {}
     for target in target_cols:
         log.info("Training classical models for target: %s", target)
-        selected_data = data[[smiles_col, target]].dropna(subset=[target])
-        log.info("Number of training samples %d", len(selected_data))
-        X = features.loc[selected_data[smiles_col]]
-        y = selected_data[target].values
-        groups = clusters.loc[selected_data[smiles_col]]
+        selected_idxs = data[target].dropna().index
+        log.info("Number of training samples %d", len(selected_idxs))
+        X = features.loc[selected_idxs]
+        y = data.loc[selected_idxs, target].values
+        groups = clusters.loc[selected_idxs]
         best_models = _train_classical_model(
             X,
             y,
@@ -103,6 +101,7 @@ def _train_classical_model(
                 model["regressor"].__class__.__name__,
                 best_params,
             )
+        log.info("Finalizing model: %s", model["regressor"].__class__.__name__)
         model["regressor"].set_params(**best_params)
         model.fit(X, y)
     return best_models
@@ -128,7 +127,7 @@ def _regression_selection_by_cv(
         cv = GroupKFold(n_splits=CROSS_VALIDATION_FOLDS)
         start = time()
         scaler = StandardScaler()
-        pipe = Pipeline(steps=[("scaler", scaler), ("regressor", reg)])
+        pipe = Pipeline(steps=[("scaler", scaler), ("regressor", clone(reg))])
         predictions = cross_val_predict(estimator=pipe, X=X, y=y, cv=cv, groups=groups)
         mae = mean_absolute_error(y, predictions)
         log.info(
