@@ -10,15 +10,12 @@ from tqdm import tqdm
 from .config import CROSS_VALIDATION_FOLDS
 
 
-def train_cv_chemprop_models(
-    data: pd.DataFrame, groups: pd.Series, smiles_col: str = "SMILES"
-) -> pd.DataFrame:
+def train_cv_chemprop_models(data: pd.DataFrame, groups: pd.Series) -> pd.DataFrame:
     """Train a Chemprop multitask models using cross-validation.
 
     Args:
         data (pd.DataFrame): A DataFrame containing the training data.
         groups (pd.Series): The groups to use for cross-validation.
-        smiles_col (str): The name of the column containing SMILES strings.
 
     Returns:
         pd.DataFrame: A DataFrame containing cross-validation predictions.
@@ -28,10 +25,10 @@ def train_cv_chemprop_models(
     cv = GroupKFold(n_splits=CROSS_VALIDATION_FOLDS)
     for fold, (train_idx, val_idx) in enumerate(cv.split(data, groups=groups)):
         data.drop("Molecule Name", axis=1).iloc[train_idx].to_csv(
-            f"chemprop_data/train_fold_{fold}.csv", index=False
+            f"chemprop_data/train_fold_{fold}.csv"
         )
         data.drop("Molecule Name", axis=1).iloc[val_idx].to_csv(
-            f"chemprop_data/val_fold_{fold}.csv", index=False
+            f"chemprop_data/val_fold_{fold}.csv"
         )
 
     for fold in tqdm(range(CROSS_VALIDATION_FOLDS)):
@@ -74,7 +71,7 @@ def train_cv_chemprop_models(
             for fold in range(CROSS_VALIDATION_FOLDS)
         ],
         axis=0,
-    ).set_index(smiles_col)
+    ).set_index("SMILES")
     return cross_val_preds
 
 
@@ -86,7 +83,7 @@ def finalize_chemprop_model(data: pd.DataFrame) -> None:
     """
     Path("chemprop_data").mkdir(exist_ok=True)
     Path("chemprop_models").mkdir(exist_ok=True)
-    data.drop("Molecule Name", axis=1).to_csv("chemprop_data/train.csv", index=False)
+    data.drop("Molecule Name", axis=1).to_csv("chemprop_data/train.csv")
     subprocess.run(
         [
             "chemprop",
