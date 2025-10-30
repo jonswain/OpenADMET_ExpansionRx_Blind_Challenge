@@ -40,22 +40,26 @@ class ChemicalMetaRegressor:
 
     def __post_init__(self):
         log.info("Generating features for training data")
-        self.training_features = generate_features(self.training_data[self.smiles_col])
+        self.training_data = self.training_data.copy()
+        self.training_data = self.training_data.rename(
+            columns={self.smiles_col: "SMILES"}
+        )
+        self.training_data = self.training_data.set_index("SMILES")
+        self.training_features = generate_features(self.training_data.index.to_list())
         self.clusters = calculate_butina_clusters(self.training_features)
         self.cross_val_preds = pd.DataFrame()
-        self.cross_val_preds[self.smiles_col] = self.training_data[self.smiles_col]
+        self.cross_val_preds.index = self.training_data.index
         for target in self.target_cols:
             self.cross_val_preds[f"{target}_true"] = self.training_data[target]
-        self.cross_val_preds.set_index(self.smiles_col, inplace=True)
 
     def _train_classical_models(
         self, n_keep: int = 1, tune_hyperparameters: bool = True
-    ):
+    ) -> None:
+        """Train classical ML models on the training data."""
         log.info("Training classical models")
         self.classical_models = train_classical_models(
             self.training_features,
             self.training_data,
-            self.smiles_col,
             self.target_cols,
             self.clusters,
             n_keep=n_keep,
@@ -70,9 +74,7 @@ class ChemicalMetaRegressor:
     def _train_chemprop_model(self):
         """Train a Chemprop model on the training data."""
         log.info("Training Chemprop models")
-        chemprop_preds = train_cv_chemprop_models(
-            self.training_data, self.clusters, self.smiles_col
-        )
+        chemprop_preds = train_cv_chemprop_models(self.training_data, self.clusters)
         chemprop_preds.columns = [f"{col}_Chemprop" for col in chemprop_preds.columns]
         self.cross_val_preds = self.cross_val_preds.merge(
             chemprop_preds,
@@ -98,7 +100,7 @@ class ChemicalMetaRegressor:
         self._train_classical_models(
             n_keep=n_keep_classical, tune_hyperparameters=tune_hyperparameters
         )
-        # self._train_chemprop_model()
+        self._train_chemprop_model()
         self._train_model_selector()
 
     def predict(
