@@ -82,7 +82,7 @@ def calculate_butina_clusters(
     dists = []
     nfps = len(fps)
     fps_list = fps.apply(_series_to_bit_vect, axis=1).tolist()
-    for i in range(1, nfps):
+    for i in tqdm(range(1, nfps), desc="Calculating distances for clustering"):
         sims = DataStructs.BulkTanimotoSimilarity(fps_list[i], fps_list[:i])
         dists.extend([1 - x for x in sims])
     mol_clusters = Butina.ClusterData(dists, nfps, cutoff, isDistData=True)
