@@ -42,6 +42,7 @@ SKLEARN_MODELS = [
 
 
 def _sample_lasso_params(trial: Trial) -> dict:
+    """Search space for Lasso Regressor."""
     return {
         "alpha": trial.suggest_float("alpha", 1e-4, 10.0, log=True),
     }
