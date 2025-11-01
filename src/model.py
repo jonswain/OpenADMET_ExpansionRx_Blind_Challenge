@@ -1,6 +1,7 @@
 """Model definition for chemical property prediction."""
 
 import logging
+import uuid
 from dataclasses import dataclass, field
 
 import pandas as pd
@@ -8,6 +9,7 @@ import pandas as pd
 from .features import calculate_butina_clusters, generate_features
 from .model_selection import train_model_selector
 from .predict import predict_on_smiles
+from .preprocessing import preprocess_chemical_data
 from .training_chemprop_models import finalize_chemprop_model, train_cv_chemprop_models
 from .training_classical_models import train_classical_models
 
@@ -27,6 +29,7 @@ class ChemicalMetaRegressor:
         classical_models (dict): A dictionary of trained classical models.
         cross_val_preds (pd.DataFrame): A DataFrame containing cross-validation predictions.
         model_selectors (dict): A dictionary of trained model selectors.
+        uuid (str): A unique identifier for the model instance.
     """
 
     smiles_col: str = "SMILES"
@@ -37,14 +40,19 @@ class ChemicalMetaRegressor:
     classical_models: dict = field(default_factory=dict)
     cross_val_preds: pd.DataFrame = field(default_factory=pd.DataFrame)
     model_selectors: dict = field(default_factory=dict)
+    uuid: str = field(default_factory=lambda: str(uuid.uuid4()))
 
     def __post_init__(self):
-        log.info("Generating features for training data")
         self.training_data = self.training_data.copy()
         self.training_data = self.training_data.rename(
             columns={self.smiles_col: "SMILES"}
         )
+        log.info("Preprocessing training data")
+        self.training_data = preprocess_chemical_data(
+            self.training_data, feature_cols=self.target_cols, smiles_col="SMILES"
+        )
         self.training_data = self.training_data.set_index("SMILES")
+        log.info("Generating features for training data")
         self.training_features = generate_features(self.training_data.index.to_list())
         self.clusters = calculate_butina_clusters(self.training_features)
         self.cross_val_preds = pd.DataFrame()
@@ -74,7 +82,9 @@ class ChemicalMetaRegressor:
     def _train_chemprop_model(self):
         """Train a Chemprop model on the training data."""
         log.info("Training Chemprop models")
-        chemprop_preds = train_cv_chemprop_models(self.training_data, self.clusters)
+        chemprop_preds = train_cv_chemprop_models(
+            self.training_data, self.clusters, self.uuid
+        )
         chemprop_preds.columns = [f"{col}_Chemprop" for col in chemprop_preds.columns]
         self.cross_val_preds = self.cross_val_preds.merge(
             chemprop_preds,
@@ -82,7 +92,7 @@ class ChemicalMetaRegressor:
             right_index=True,
         )
         log.info("Finalizing Chemprop model")
-        finalize_chemprop_model(self.training_data)
+        finalize_chemprop_model(self.training_data, self.uuid)
 
     def _train_model_selector(self):
         """Train a model selector to choose the best model for each prediction."""
@@ -112,5 +122,6 @@ class ChemicalMetaRegressor:
             smiles,
             self.model_selectors,
             self.classical_models,
+            self.uuid,
             return_model_choices=return_model_choices,
         )
