@@ -9,10 +9,12 @@ import pandas as pd
 from optuna.exceptions import TrialPruned
 from optuna.pruners import MedianPruner
 from sklearn.base import BaseEstimator, clone
+from sklearn.compose import ColumnTransformer
+from sklearn.feature_selection import VarianceThreshold
 from sklearn.metrics import mean_absolute_error
 from sklearn.model_selection import GroupKFold, cross_val_predict
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import MaxAbsScaler, StandardScaler
 
 from .config import CROSS_VALIDATION_FOLDS, HYPERPARAMETER_SEARCH_SPACE, SKLEARN_MODELS
 
@@ -126,8 +128,29 @@ def _regression_selection_by_cv(
     for reg in SKLEARN_MODELS:
         cv = GroupKFold(n_splits=CROSS_VALIDATION_FOLDS)
         start = time()
-        scaler = StandardScaler()
-        pipe = Pipeline(steps=[("scaler", scaler), ("regressor", clone(reg))])
+        fp_indices = list(range(len([col for col in X.columns if "fp_" in col])))
+        rdkit_desc_indices = list(range(len(fp_indices), X.shape[1]))
+        fp_pipeline = Pipeline(
+            steps=[
+                ("variance_filter_fp", VarianceThreshold(threshold=0.01)),
+                ("maxabs_scaler", MaxAbsScaler()),
+            ]
+        )
+        desc_pipeline = Pipeline(
+            steps=[
+                ("variance_filter_desc", VarianceThreshold(threshold=0.0)),
+                ("standard_scaler", StandardScaler()),
+            ]
+        )
+        preprocessor = ColumnTransformer(
+            transformers=[
+                ("fingerprint_processing", fp_pipeline, fp_indices),
+                ("descriptor_scaling", desc_pipeline, rdkit_desc_indices),
+            ]
+        )
+        pipe = Pipeline(
+            steps=[("preprocessor", preprocessor), ("regressor", clone(reg))]
+        )
         predictions = cross_val_predict(estimator=pipe, X=X, y=y, cv=cv, groups=groups)
         mae = mean_absolute_error(y, predictions)
         log.info(
@@ -177,7 +200,29 @@ def objective_wrapper(
     cv = GroupKFold(n_splits=CROSS_VALIDATION_FOLDS)
     cv_splits = cv.split(X, y, groups)
     tuned_model = clone(model["regressor"]).set_params(**params)
-    pipe = Pipeline(steps=[("scaler", StandardScaler()), ("regressor", tuned_model)])
+    fp_indices = list(range(len([col for col in X.columns if "fp_" in col])))
+    rdkit_desc_indices = list(range(len(fp_indices), X.shape[1]))
+    fp_pipeline = Pipeline(
+        steps=[
+            ("variance_filter_fp", VarianceThreshold(threshold=0.01)),
+            ("maxabs_scaler", MaxAbsScaler()),
+        ]
+    )
+    desc_pipeline = Pipeline(
+        steps=[
+            ("variance_filter_desc", VarianceThreshold(threshold=0.0)),
+            ("standard_scaler", StandardScaler()),
+        ]
+    )
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ("fingerprint_processing", fp_pipeline, fp_indices),
+            ("descriptor_scaling", desc_pipeline, rdkit_desc_indices),
+        ]
+    )
+    pipe = Pipeline(
+        steps=[("preprocessor", preprocessor), ("regressor", clone(tuned_model))]
+    )
     mae_list: list[float] = []
     for i, (train_index, val_index) in enumerate(cv_splits):
         X_train, X_val = X.iloc[train_index], X.iloc[val_index]
