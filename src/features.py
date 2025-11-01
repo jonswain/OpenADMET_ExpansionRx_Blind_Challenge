@@ -57,9 +57,11 @@ def _generate_rdkit_descriptors(mol: Mol, missingVal: None | float = None) -> di
     """
     res = {}
     for nm, fn in Descriptors._descList:
+        if nm == "Ipc":
+            continue  # Ipc descriptor sometimes has strangely high values
         try:
             val = fn(mol)
-        except:
+        except Exception:
             val = missingVal
         res[nm] = val
     return res
