@@ -10,25 +10,28 @@ from tqdm import tqdm
 from .config import CROSS_VALIDATION_FOLDS
 
 
-def train_cv_chemprop_models(data: pd.DataFrame, groups: pd.Series) -> pd.DataFrame:
+def train_cv_chemprop_models(
+    data: pd.DataFrame, groups: pd.Series, uuid: str
+) -> pd.DataFrame:
     """Train a Chemprop multitask models using cross-validation.
 
     Args:
         data (pd.DataFrame): A DataFrame containing the training data.
         groups (pd.Series): The groups to use for cross-validation.
+        uuid (str): The UUID for the experiment.
 
     Returns:
         pd.DataFrame: A DataFrame containing cross-validation predictions.
     """
-    Path("chemprop_data").mkdir(exist_ok=True)
-    Path("chemprop_models").mkdir(exist_ok=True)
+    Path(f"chemprop_data/{uuid}").mkdir(exist_ok=True, parents=True)
+    Path(f"chemprop_models/{uuid}").mkdir(exist_ok=True, parents=True)
     cv = GroupKFold(n_splits=CROSS_VALIDATION_FOLDS)
     for fold, (train_idx, val_idx) in enumerate(cv.split(data, groups=groups)):
         data.drop("Molecule Name", axis=1).iloc[train_idx].to_csv(
-            f"chemprop_data/train_fold_{fold}.csv"
+            f"chemprop_data/{uuid}/train_fold_{fold}.csv"
         )
         data.drop("Molecule Name", axis=1).iloc[val_idx].to_csv(
-            f"chemprop_data/val_fold_{fold}.csv"
+            f"chemprop_data/{uuid}/val_fold_{fold}.csv"
         )
 
     for fold in tqdm(range(CROSS_VALIDATION_FOLDS)):
@@ -37,11 +40,11 @@ def train_cv_chemprop_models(data: pd.DataFrame, groups: pd.Series) -> pd.DataFr
                 "chemprop",
                 "train",
                 "--data-path",
-                f"chemprop_data/train_fold_{fold}.csv",
+                f"chemprop_data/{uuid}/train_fold_{fold}.csv",
                 "--task-type",
                 "regression",
                 "--output-dir",
-                f"chemprop_models/fold_{fold}",
+                f"chemprop_models/{uuid}/fold_{fold}",
                 "--split-type",
                 "scaffold_balanced",
             ],
@@ -55,11 +58,11 @@ def train_cv_chemprop_models(data: pd.DataFrame, groups: pd.Series) -> pd.DataFr
                 "chemprop",
                 "predict",
                 "--test-path",
-                f"chemprop_data/val_fold_{fold}.csv",
+                f"chemprop_data/{uuid}/val_fold_{fold}.csv",
                 "--model-paths",
-                f"chemprop_models/fold_{fold}",
+                f"chemprop_models/{uuid}/fold_{fold}",
                 "--preds-path",
-                f"chemprop_data/preds_fold_{fold}.csv",
+                f"chemprop_data/{uuid}/preds_fold_{fold}.csv",
             ],
             check=True,
             stdout=subprocess.DEVNULL,
@@ -67,7 +70,7 @@ def train_cv_chemprop_models(data: pd.DataFrame, groups: pd.Series) -> pd.DataFr
         )
     cross_val_preds = pd.concat(
         [
-            pd.read_csv(f"chemprop_data/preds_fold_{fold}.csv")
+            pd.read_csv(f"chemprop_data/{uuid}/preds_fold_{fold}.csv")
             for fold in range(CROSS_VALIDATION_FOLDS)
         ],
         axis=0,
@@ -75,25 +78,26 @@ def train_cv_chemprop_models(data: pd.DataFrame, groups: pd.Series) -> pd.DataFr
     return cross_val_preds
 
 
-def finalize_chemprop_model(data: pd.DataFrame) -> None:
+def finalize_chemprop_model(data: pd.DataFrame, uuid: str) -> None:
     """Train a finalized Chemprop multitask model on all the training data.
 
     Args:
         data (pd.DataFrame): A DataFrame containing the training data.
+        uuid (str): The UUID for the experiment.
     """
-    Path("chemprop_data").mkdir(exist_ok=True)
-    Path("chemprop_models").mkdir(exist_ok=True)
-    data.drop("Molecule Name", axis=1).to_csv("chemprop_data/train.csv")
+    Path(f"chemprop_data/{uuid}").mkdir(exist_ok=True, parents=True)
+    Path(f"chemprop_models/{uuid}").mkdir(exist_ok=True, parents=True)
+    data.drop("Molecule Name", axis=1).to_csv(f"chemprop_data/{uuid}/train.csv")
     subprocess.run(
         [
             "chemprop",
             "train",
             "--data-path",
-            "chemprop_data/train.csv",
+            f"chemprop_data/{uuid}/train.csv",
             "--task-type",
             "regression",
             "--output-dir",
-            "chemprop_models/finalized_model",
+            f"chemprop_models/{uuid}/finalized_model",
             "--split-type",
             "scaffold_balanced",
         ],

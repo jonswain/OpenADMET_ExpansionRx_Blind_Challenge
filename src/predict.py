@@ -17,6 +17,7 @@ def predict_on_smiles(
     smiles: list[str] | pd.Series,
     selection_models: dict[str, RandomForestClassifier],
     classical_models: dict[str, dict[str, Pipeline]],
+    uuid: str,
     return_model_choices: bool = False,
 ) -> pd.DataFrame:
     """Make predictions for each SMILES in the test set using the best model.
@@ -27,6 +28,7 @@ def predict_on_smiles(
             select the best performing model for each target.
         classical_models (dict[str, dict[str, Pipeline]]): A dictionary mapping target
             names to their trained classical models.
+        uuid (str): The unique identifier for the model instance.
         return_model_choices (bool): Whether to return the model choices alongside
             the predictions. Defaults to False.
 
@@ -40,7 +42,7 @@ def predict_on_smiles(
         prediction_df[f"{target}_model"] = selector.predict(test_features)
     if "Chemprop" in prediction_df.values:
         log.info("Making Chemprop predictions")
-        chemprop_preds = _make_chemprop_predictions(smiles)
+        chemprop_preds = _make_chemprop_predictions(smiles, uuid)
     for target, models in classical_models.items():
         log.info(f"Making predictions for target: {target}")
         for model_name in prediction_df[f"{target}_model"].unique():
@@ -68,30 +70,35 @@ def predict_on_smiles(
     ]
 
 
-def _make_chemprop_predictions(smiles: list[str] | pd.Series) -> pd.DataFrame:
+def _make_chemprop_predictions(
+    smiles: list[str] | pd.Series, uuid: str
+) -> pd.DataFrame:
     """Make Chemprop predictions on a list of SMILES strings.
 
     Args:
         smiles (list[str] | pd.Series): The SMILES strings to make predictions for.
+        uuid (str): The unique identifier for the model instance.
 
     Returns:
         pd.DataFrame: A DataFrame containing the Chemprop predictions.
     """
-    Path("chemprop_data/test.csv").parent.mkdir(parents=True, exist_ok=True)
-    pd.DataFrame({"SMILES": smiles}).to_csv("chemprop_data/test.csv", index=False)
+    Path(f"chemprop_data/{uuid}").parent.mkdir(parents=True, exist_ok=True)
+    pd.DataFrame({"SMILES": smiles}).to_csv(
+        f"chemprop_data/{uuid}/test.csv", index=False
+    )
     subprocess.run(
         [
             "chemprop",
             "predict",
             "--test-path",
-            "chemprop_data/test.csv",
+            f"chemprop_data/{uuid}/test.csv",
             "--model-paths",
-            "chemprop_models/finalized_model",
+            f"chemprop_models/{uuid}",
             "--preds-path",
-            "chemprop_data/preds.csv",
+            f"chemprop_data/{uuid}/preds.csv",
         ],
         check=True,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
-    return pd.read_csv("chemprop_data/preds.csv").set_index("SMILES")
+    return pd.read_csv(f"chemprop_data/{uuid}/preds.csv").set_index("SMILES")
