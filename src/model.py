@@ -43,7 +43,7 @@ class ChemicalMetaRegressor:
     uuid: str = field(default_factory=lambda: str(uuid.uuid4()))
 
     def __post_init__(self):
-        self.training_data = self.training_data.copy()
+        self.training_data = self.training_data.copy().reset_index(drop=True)
         self.training_data = self.training_data.rename(
             columns={self.smiles_col: "SMILES"}
         )
