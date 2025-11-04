@@ -29,10 +29,10 @@ def train_model_selector(
         targets, cross_validation_predictions
     )
     model_selectors: dict[str, RandomForestClassifier] = {}
-    for target in targets:
+    for i, target in enumerate(targets):
         log.info("Training selection model for target: %s", target)
         selected_data = cross_validation_predictions[f"{target}_true"].dropna().index
-        X = features.loc[selected_data]
+        X = features.drop(columns=targets[i:]).loc[selected_data]
         y = cross_validation_predictions[f"{target}_best_model"].loc[selected_data]
         log.info(
             "Proportion of classes: %s",

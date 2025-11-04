@@ -51,6 +51,8 @@ def train_classical_models(
         log.info("Number of training samples %d", len(selected_idxs))
         X = features.loc[selected_idxs]
         y = data.loc[selected_idxs, target].values
+
+        log.info(f"X shape: {X.shape}, y shape: {y.shape}")
         groups = clusters.loc[selected_idxs]
         best_models = _train_classical_model(
             X,
@@ -62,6 +64,28 @@ def train_classical_models(
         trained_models[target] = {}
         for model in best_models:
             trained_models[target][model["regressor"].__class__.__name__] = model
+
+        # Use the values from previous targets as features for subsequent targets
+        features[target] = data[target]
+        # If missing values, predict them using the trained models and average
+        missing_features = features[features[target].isna()]
+        if not missing_features.empty:
+            log.info(
+                "Predicting %s missing values for target: %s",
+                missing_features.shape[0],
+                target,
+            )
+            missing_predictions = pd.DataFrame(
+                index=missing_features.index, dtype=float
+            )
+            for model in best_models:
+                missing_predictions[model["regressor"].__class__.__name__] = (
+                    model.predict(missing_features)
+                )
+            features.loc[missing_features.index, target] = missing_predictions.mean(
+                axis=1
+            )
+
     return trained_models
 
 

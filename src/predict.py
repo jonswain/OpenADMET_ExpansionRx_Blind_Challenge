@@ -40,20 +40,13 @@ def predict_on_smiles(
     for target, selector in selection_models.items():
         log.info(f"Making model selection predictions for target: {target}")
         prediction_df[f"{target}_model"] = selector.predict(test_features)
-    if "Chemprop" in prediction_df.values:
-        log.info("Making Chemprop predictions")
-        chemprop_preds = _make_chemprop_predictions(smiles, uuid)
-    for target, models in classical_models.items():
+
+        models = classical_models[target]
         log.info(f"Making predictions for target: {target}")
         for model_name in prediction_df[f"{target}_model"].unique():
             if model_name == "Chemprop":
-                log.info("Using model: Chemprop")
-                selected_smiles = prediction_df[
-                    prediction_df[f"{target}_model"] == model_name
-                ].index
-                prediction_df.loc[selected_smiles, target] = chemprop_preds.loc[
-                    selected_smiles, target
-                ]
+                log.info("Using Chemprop model")
+                continue
             else:
                 log.info(f"Using model: {model_name}")
                 model = models[model_name]
@@ -63,6 +56,19 @@ def predict_on_smiles(
                 selected_features = test_features.loc[selected_smiles]
                 preds = model.predict(selected_features)
                 prediction_df.loc[selected_smiles, target] = preds
+        test_features[target] = prediction_df[target]
+    if "Chemprop" in prediction_df.values:
+        log.info("Making Chemprop predictions")
+        chemprop_preds = _make_chemprop_predictions(smiles, uuid)
+        log.info("Adding Chemprop predictions to output DataFrame")
+        for target in selection_models.keys():
+            selected_smiles = prediction_df[
+                prediction_df[f"{target}_model"] == "Chemprop"
+            ].index
+            prediction_df.loc[selected_smiles, target] = chemprop_preds.loc[
+                selected_smiles, target
+            ]
+
     if return_model_choices:
         return prediction_df
     return prediction_df[
