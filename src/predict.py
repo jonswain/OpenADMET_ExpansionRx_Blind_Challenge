@@ -43,20 +43,17 @@ def predict_on_smiles(
 
         models = classical_models[target]
         log.info(f"Making predictions for target: {target}")
-        for model_name in prediction_df[f"{target}_model"].unique():
-            if model_name == "Chemprop":
-                log.info("Using Chemprop model")
-                continue
-            else:
-                log.info(f"Using model: {model_name}")
-                model = models[model_name]
-                selected_smiles = prediction_df[
-                    prediction_df[f"{target}_model"] == model_name
-                ].index
-                selected_features = test_features.loc[selected_smiles]
-                preds = model.predict(selected_features)
-                prediction_df.loc[selected_smiles, target] = preds
-        test_features[target] = prediction_df[target]
+        for model_name, model in models.items():
+            classical_preds = pd.DataFrame(index=smiles, dtype=float)
+            log.info(f"Using model: {model_name}")
+            classical_preds[model_name] = model.predict(test_features)
+            selected_smiles = prediction_df[
+                prediction_df[f"{target}_model"] == model_name
+            ].index
+            prediction_df.loc[selected_smiles, target] = classical_preds.loc[
+                selected_smiles, model_name
+            ]
+        test_features[target] = classical_preds.mean(axis=1)
     if "Chemprop" in prediction_df.values:
         log.info("Making Chemprop predictions")
         chemprop_preds = _make_chemprop_predictions(smiles, uuid)
