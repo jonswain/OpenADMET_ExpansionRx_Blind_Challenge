@@ -51,6 +51,7 @@ def train_classical_models(
         log.info("Number of training samples %d", len(selected_idxs))
         X = features.loc[selected_idxs]
         y = data.loc[selected_idxs, target].values
+        log.info(f"X shape: {X.shape}, y shape: {y.shape}")
         groups = clusters.loc[selected_idxs]
         best_models = _train_classical_model(
             X,
@@ -128,25 +129,52 @@ def _regression_selection_by_cv(
     for reg in SKLEARN_MODELS:
         cv = GroupKFold(n_splits=CROSS_VALIDATION_FOLDS)
         start = time()
-        fp_indices = list(range(len([col for col in X.columns if "fp_" in col])))
-        rdkit_desc_indices = list(range(len(fp_indices), X.shape[1]))
-        fp_pipeline = Pipeline(
+        discrete_columns = [
+            col
+            for col in X.columns
+            if any(
+                prefix in col
+                for prefix in [
+                    "fp_",
+                    "maccs_",
+                    "rdkit_fp_",
+                    "atom_pair_",
+                    "topo_torsion_",
+                    "pharm_",
+                ]
+            )
+        ]
+        discrete_column_indices = [X.columns.get_loc(col) for col in discrete_columns]
+        continuous_columns = [col for col in X.columns if col not in discrete_columns]
+        continuous_column_indices = [
+            X.columns.get_loc(col) for col in continuous_columns
+        ]
+        discrete_column_pipeline = Pipeline(
             steps=[
-                ("variance_filter_fp", VarianceThreshold(threshold=0.01)),
+                ("variance_filter_fp", VarianceThreshold(threshold=0.05)),
                 ("maxabs_scaler", MaxAbsScaler()),
             ]
         )
-        desc_pipeline = Pipeline(
+        continuous_column_pipeline = Pipeline(
             steps=[
-                ("variance_filter_desc", VarianceThreshold(threshold=0.0)),
+                ("variance_filter_desc", VarianceThreshold(threshold=0.01)),
                 ("standard_scaler", StandardScaler()),
             ]
         )
         preprocessor = ColumnTransformer(
             transformers=[
-                ("fingerprint_processing", fp_pipeline, fp_indices),
-                ("descriptor_scaling", desc_pipeline, rdkit_desc_indices),
-            ]
+                (
+                    "discrete_column_processing",
+                    discrete_column_pipeline,
+                    discrete_column_indices,
+                ),
+                (
+                    "continuous_column_processing",
+                    continuous_column_pipeline,
+                    continuous_column_indices,
+                ),
+            ],
+            remainder="passthrough",
         )
         pipe = Pipeline(
             steps=[("preprocessor", preprocessor), ("regressor", clone(reg))]
@@ -200,29 +228,52 @@ def objective_wrapper(
     cv = GroupKFold(n_splits=CROSS_VALIDATION_FOLDS)
     cv_splits = cv.split(X, y, groups)
     tuned_model = clone(model["regressor"]).set_params(**params)
-    fp_indices = list(range(len([col for col in X.columns if "fp_" in col])))
-    rdkit_desc_indices = list(range(len(fp_indices), X.shape[1]))
-    fp_pipeline = Pipeline(
+    discrete_columns = [
+        col
+        for col in X.columns
+        if any(
+            prefix in col
+            for prefix in [
+                "fp_",
+                "maccs_",
+                "rdkit_fp_",
+                "atom_pair_",
+                "topo_torsion_",
+                "pharm_",
+            ]
+        )
+    ]
+    discrete_column_indices = [X.columns.get_loc(col) for col in discrete_columns]
+    continuous_columns = [col for col in X.columns if col not in discrete_columns]
+    continuous_column_indices = [X.columns.get_loc(col) for col in continuous_columns]
+    discrete_column_pipeline = Pipeline(
         steps=[
-            ("variance_filter_fp", VarianceThreshold(threshold=0.01)),
+            ("variance_filter_fp", VarianceThreshold(threshold=0.05)),
             ("maxabs_scaler", MaxAbsScaler()),
         ]
     )
-    desc_pipeline = Pipeline(
+    continuous_column_pipeline = Pipeline(
         steps=[
-            ("variance_filter_desc", VarianceThreshold(threshold=0.0)),
+            ("variance_filter_desc", VarianceThreshold(threshold=0.01)),
             ("standard_scaler", StandardScaler()),
         ]
     )
     preprocessor = ColumnTransformer(
         transformers=[
-            ("fingerprint_processing", fp_pipeline, fp_indices),
-            ("descriptor_scaling", desc_pipeline, rdkit_desc_indices),
-        ]
+            (
+                "discrete_column_processing",
+                discrete_column_pipeline,
+                discrete_column_indices,
+            ),
+            (
+                "continuous_column_processing",
+                continuous_column_pipeline,
+                continuous_column_indices,
+            ),
+        ],
+        remainder="passthrough",
     )
-    pipe = Pipeline(
-        steps=[("preprocessor", preprocessor), ("regressor", clone(tuned_model))]
-    )
+    pipe = Pipeline(steps=[("preprocessor", preprocessor), ("regressor", tuned_model)])
     mae_list: list[float] = []
     for i, (train_index, val_index) in enumerate(cv_splits):
         X_train, X_val = X.iloc[train_index], X.iloc[val_index]

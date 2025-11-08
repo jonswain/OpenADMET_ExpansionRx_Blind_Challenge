@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 
 import pandas as pd
 
-from .features import calculate_butina_clusters, generate_features
+from .features import calculate_butina_clusters, generate_enhanced_features
 from .model_selection import train_model_selector
 from .predict import predict_on_smiles
 from .preprocessing import preprocess_chemical_data
@@ -43,7 +43,7 @@ class ChemicalMetaRegressor:
     uuid: str = field(default_factory=lambda: str(uuid.uuid4()))
 
     def __post_init__(self):
-        self.training_data = self.training_data.copy()
+        self.training_data = self.training_data.reset_index(drop=True)
         self.training_data = self.training_data.rename(
             columns={self.smiles_col: "SMILES"}
         )
@@ -53,7 +53,9 @@ class ChemicalMetaRegressor:
         )
         self.training_data = self.training_data.set_index("SMILES")
         log.info("Generating features for training data")
-        self.training_features = generate_features(self.training_data.index.to_list())
+        self.training_features = generate_enhanced_features(
+            self.training_data.index.to_list()
+        )
         self.clusters = calculate_butina_clusters(self.training_features)
         self.cross_val_preds = pd.DataFrame()
         self.cross_val_preds.index = self.training_data.index

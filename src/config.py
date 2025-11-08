@@ -18,6 +18,10 @@ from sklearn.linear_model import (
 )
 from xgboost import XGBRegressor
 
+MORGAN_FINGERPRINT_RADIUS = 3
+MORGAN_FINGERPRINT_SIZE = 2048
+RDKIT_FINGERPRINT_SIZE = 2048
+
 CROSS_VALIDATION_FOLDS = 5
 
 SKLEARN_MODELS = [

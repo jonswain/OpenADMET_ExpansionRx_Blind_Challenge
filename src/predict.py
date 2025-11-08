@@ -8,7 +8,7 @@ import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.pipeline import Pipeline
 
-from .features import generate_features
+from .features import generate_enhanced_features
 
 log = logging.getLogger(__name__)
 
@@ -35,7 +35,7 @@ def predict_on_smiles(
     Returns:
         pd.DataFrame: A DataFrame containing the predictions for each target.
     """
-    test_features = generate_features(smiles)
+    test_features = generate_enhanced_features(smiles)
     prediction_df = pd.DataFrame(index=smiles)
     for target, selector in selection_models.items():
         log.info(f"Making model selection predictions for target: {target}")
